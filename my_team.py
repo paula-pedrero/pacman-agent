@@ -142,6 +142,29 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
   but it is by no means the best or only way to build an offensive agent.
   """
 
+    def register_initial_state(self,game_state):
+        #Register initial state of the agent
+        ReflexCaptureAgent.register_initial_state(self,game_state)
+
+        #Get the walls of the map and find its middle column
+        walls = game_state.get_walls()
+        middle= walls.width // 2
+
+        #Create a list to store all possible positions on our home border
+        self.home_positions = []
+
+        #find the column that belongs to our team's home side
+        if self.red:
+            home_x = middle - 1
+        else:
+            home_x = middle
+
+        #Check every position along the home border
+        for y in range(walls.height):
+            #Only add positions that are not walls
+            if not walls[home_x][y]:
+                self.home_positions.append((home_x, y))
+
     def get_features(self, game_state, action):
         features = util.Counter() #features of this action
         successor = self.get_successor(game_state, action) #game state after performing an action
@@ -155,10 +178,19 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         if len(food_list) > 0:  # This should always be True,  but better safe than sorry
             min_distance = min([self.get_maze_distance(my_pos, food) for food in food_list])
             features['distance_to_food'] = min_distance
-        #Feature 3: Calculate the distance back to our starting position
-        features['distance_to_home'] = self.get_maze_distance(
-            my_pos,self.start
-        )
+        #Feature 3: Calculate the distance to the nearest position on our home border
+        
+        #Check that there are available positions on the home border
+        if len(self.home_positions) > 0:
+            #calculate the distance from Pacman to every possible home position
+            distances = [
+                self.get_maze_distance(my_pos, home_pos)
+                for home_pos in self.home_positions
+            ]
+            #Store the shortest distance as our distance to home
+            features['distance_to_home'] = min(distances)
+
+
         #Feature 4: avoid dangerous enemies
         enemies = [
             successor.get_agent_state(i)
